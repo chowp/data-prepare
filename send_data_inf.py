@@ -1,5 +1,5 @@
 
-__author__ = 'niexiaohui'
+__author__ = 'niexiaohui pch'
 import os
 import urllib
 import traceback
