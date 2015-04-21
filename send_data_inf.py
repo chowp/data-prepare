@@ -63,6 +63,15 @@ def transmit_delay(cur,conn,table_name):
                             continue
                         else:
                             monitorap = items[0]
+                            if monitorap == "008EF25FC610":
+                                monitorap = "008ef25fc611"
+                            elif monitorap == "04A151A80133":
+                                monitorap = "04a151a80134"
+                            elif monitorap == "4494FC74F534":
+                                monitorap = "4494fc74f535"
+                            else:
+                                a = 1
+                                #do noing
                         fp = open(RAW_DATA_DIR+"/"+ap+"/"+data_type+"/"+datafile)
                         for line in fp: #every line of the wired data file
                             items = line.strip('\n').split(',')
@@ -98,7 +107,7 @@ def transmit_delay(cur,conn,table_name):
                                         time1 = check[0]
                                         time2 = timestamps
                                         time3 = ''
-                                        if srcMac == monitorap: # downstream + upstream
+                                        if srcMac.lower() == monitorap.lower(): # downstream + upstream
                                             go_dir = 2
                                             seq_index = check[5]
                                             time2 =''
