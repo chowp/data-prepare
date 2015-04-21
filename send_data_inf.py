@@ -138,9 +138,54 @@ def transmit_delay(cur,conn,table_name):
 
 
     except:
-    	traceback.print_exc()                                                                   
-    	return 1
-    
+        traceback.print_exc()                                                                   
+        return 1
+
+def transmit_wireless_delay(cur,conn,table_name):
+    try:
+        print RAW_DATA_DIR
+        aps = os.listdir(RAW_DATA_DIR)
+        print aps
+        for ap in aps:
+                print ap
+                branch = os.listdir(RAW_DATA_DIR+"/"+ ap)
+                for data_type in branch:        
+                    print data_type
+                    if data_type != "delay_data":
+                        continue
+                    dataset = os.listdir(RAW_DATA_DIR+"/"+ap+"/"+data_type)
+                    dataset.sort(key= lambda x:int(x[15:]))
+                    for datafile in dataset: # datafile is particular file
+                        items = datafile.split('-')
+                        if len(items) !=3 :
+                            continue
+                        else:
+                            monitorap = items[0]
+                        fp = open(RAW_DATA_DIR+"/"+ap+"/"+data_type+"/"+datafile)
+                        for line in fp: #every line of the wired data file
+                            items = line.strip('\n').split(',')
+                            if len(items) != 3:
+                                continue
+                            if int(items[2]) != 0:
+                                sql_find = "select * from %s where seq ='%s'"%(table_name,items[2])
+                                count_find = cur.execute(sql_find)
+                                results = cur.fetchall()
+                                if count_find > 0 :
+                                    print sql_find
+                                    print results
+                                if count_find == 1: # cation this may be changed
+                                    if int(results[0][9]) == 1: # RTT and downsteam
+                                        sql_update = "update %s set time3=%s where seq='%s'"%(table_name,items[1],items[2])
+                                        print sql_update
+                                        #count_update = cur.execute(sql_update)
+                                    elif int(results[0][9]) == 2: # downstream and upstream
+                                        sql_update = "update %s set time2=%s where seq='%s'"%(table_name,items[1],items[2])
+                                        print sql_update
+                                        #count_update = cur.execute(sql_update) 
+                        conn.commit()
+    except:
+        traceback.print_exc()                                                                   
+        return 1
                                                                                                 
 
 if __name__ == "__main__":
@@ -156,7 +201,8 @@ if __name__ == "__main__":
         print "#####transmit delay data#####"
         transmit_delay(cur,conn,wireless_n)
     if sys.argv[1] == "2":
-        print "#####transmit interference data#####"
+        print "##### match the wireless part #####"
+        transmit_wireless_delay(cur,conn,wireless_n)
     if sys.argv[1] == "3":
         print "#####transmit wifi data#####"
     cur.close()     
