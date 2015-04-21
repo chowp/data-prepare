@@ -40,7 +40,7 @@ TCP_OTHER   = 8
 #transmit packet info to server
 def transmit_delay(cur,conn,table_name):
     try:
-        tcp_data_list = range(1,HOLD_TIME)
+        tcp_data_list = range(0,HOLD_TIME)
         start = 0
         end = 0
         wireless_last_match_postion = 0
@@ -55,6 +55,7 @@ def transmit_delay(cur,conn,table_name):
                     if data_type != "wire_data":
                         continue
                     dataset = os.listdir(RAW_DATA_DIR+"/"+ap+"/"+data_type)
+                    dataset.sort(key= lambda x:int(x[15:]))
                     for datafile in dataset: # datafile is particular file
                         print datafile
                         items = datafile.split('-')
@@ -63,10 +64,13 @@ def transmit_delay(cur,conn,table_name):
                         else:
                             monitorap = items[0]
                         fp = open(RAW_DATA_DIR+"/"+ap+"/"+data_type+"/"+datafile)
-                        for line in fp:
-                            print line
+                        for line in fp: #every line of the wired data file
                             items = line.strip('\n').split(',')
-                            tcp_type = int(items[9])
+                            if len(items) != 10:
+                                continue
+                            tcp_type = -1 
+                            if items[9] !='':
+                                tcp_type = int(items[9])
                             srcIP = items[1]
                             dstIP = items[2]
                             srcMac = items[3]
@@ -78,7 +82,7 @@ def transmit_delay(cur,conn,table_name):
                             if tcp_type != TCP_ACK:
                                 tcp_data_list[end] = next_seq
                                 end = (end+1)%HOLD_TIME
-                            else #search the correlation data
+                            else:#search the correlation data
                                 for i in range(end,start,-1):
                                     if i < 0:
                                         i = i + HOLD_TIME
@@ -92,18 +96,47 @@ def transmit_delay(cur,conn,table_name):
                                         wireless_dir = RAW_DATA_DIR+"/"+ap+"/delay_data"
                                         files = os.listdir(wireless_dir)
                                         files_num = len(files)
+                                        files.sort(key= lambda x:int(x[15:]))
+                                        if wireless_last_match_postion == 0:
+                                            wireless_last_match_postion = int(files[0][15:])
+                                                                                                
                                         quit = 0
-                                        for j in range(wireless_last_match_postion,wireless_last_match_postion+files_num):
-                                            wireless_file = RAW_DATA_DIR+"/"+ap+"/delay_data"+monitorap+"-1-"+str(j)
+                                        last_file_no = int(files[-1][15:])
+                                        print "from %d to %d\n"%(wireless_last_match_postion,last_file_no)
+                                        for j in range(wireless_last_match_postion, last_file_no + 1   ):
+                                            wireless_file = RAW_DATA_DIR+"/"+ap+"/delay_data/"+monitorap+"-1-"+str(j)
+                                            short_name = monitorap+"-1-"+str(j)
+                                            if short_name not in files:
+                                                print "%s is missing"%(short_name)
+                                                wireless_last_match_postion = j + 1
+                                                continue
+                                            wireless_f = open(wireless_file)
+                                            if len(wireless_f.read()) == 0 :
+                                                print "file is empty"
+                                                wireless_last_match_postion = j+1
+                                                continue
+                                            print wireless_f
                                             for k in open(wireless_file):
-                                                kk = k.split(',')
-                                                if float(kk[0]) > float(timestamps):
+                                                kk = k.strip('\n').split(',')
+                                                if len(kk) != 3:
+                                                    print "%s format error!"%(k)
+                                                    continue
+                                                print "two kind of time is :%s,%s"%(str(kk[0]),str(timestamps))
+                                                if float(kk[0]) > float(timestamps) + 5: # 10 seconds window
+                                                    print "F wired    line is %s"%(line)
+                                                    print "F wireless line is %s\n"%(k)
+                                                    wireless_last_match_postion = j
                                                     quit = 1
                                                     break
-                                                if seq_index == kk[5]: # successfully find
-                                                    wireless_last_match_postion = j
+                                                if float(kk[0]) < float(timestamps) - 5:
+                                                    print "B wired    line is %s"%(line)
+                                                    print "B wireless line is %s\n"%(k)
+                                                    wireless_last_match_postion = j+1
+                                                    
+                                                if seq_index == kk[2]: # successfully find
+                                                    wireless_last_match_postion = j # this may be cause some missing, because some wireless packet is early than wired part
                                                     final_item = final_item + "," + str(kk[0])+"\n"
-                                                    print final_item
+                                                    print "$$$$find$$$ %s"%(final_item)
                                             if quit == 1:
                                                 break
 
