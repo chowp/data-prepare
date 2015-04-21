@@ -41,6 +41,7 @@ TCP_OTHER   = 8
 def transmit_delay(cur,conn,table_name):
     try:
         tcp_data_list = range(0,HOLD_TIME)
+        tcp_next_seq_list = range(0,HOLD_TIME)
         start = 0
         end = 0
         wireless_last_match_postion = 0
@@ -57,7 +58,6 @@ def transmit_delay(cur,conn,table_name):
                     dataset = os.listdir(RAW_DATA_DIR+"/"+ap+"/"+data_type)
                     dataset.sort(key= lambda x:int(x[15:]))
                     for datafile in dataset: # datafile is particular file
-                        print datafile
                         items = datafile.split('-')
                         if len(items) !=3 :
                             continue
@@ -80,69 +80,52 @@ def transmit_delay(cur,conn,table_name):
                             ack = items[7]
                             timestamps = items[0]
                             if tcp_type != TCP_ACK:
-                                tcp_data_list[end] = next_seq
+                                tcp_next_seq_list[end] = next_seq
+                                tcp_data_list[end] = line
                                 end = (end+1)%HOLD_TIME
-                            else:#search the correlation data
-                                for i in range(end,start,-1):
-                                    if i < 0:
-                                        i = i + HOLD_TIME
-                                    if tcp_data_list[i] == ack:
-                                        final_item=tcp_data_list[i].strip('\n')
-                                        final_item = final_item+","+str(timestamps)
-                                        seq_index = seq         # come in
-                                        if srcMac == monitorap: # COME OUT
-                                            seq_index = tcp_data_list[i].split(',')[5]
-                                        # start find the wireless delay?
-                                        wireless_dir = RAW_DATA_DIR+"/"+ap+"/delay_data"
-                                        files = os.listdir(wireless_dir)
-                                        files_num = len(files)
-                                        files.sort(key= lambda x:int(x[15:]))
-                                        if wireless_last_match_postion == 0:
-                                            wireless_last_match_postion = int(files[0][15:])
-                                                                                                
-                                        quit = 0
-                                        last_file_no = int(files[-1][15:])
-                                        print "from %d to %d\n"%(wireless_last_match_postion,last_file_no)
-                                        for j in range(wireless_last_match_postion, last_file_no + 1   ):
-                                            wireless_file = RAW_DATA_DIR+"/"+ap+"/delay_data/"+monitorap+"-1-"+str(j)
-                                            short_name = monitorap+"-1-"+str(j)
-                                            if short_name not in files:
-                                                print "%s is missing"%(short_name)
-                                                wireless_last_match_postion = j + 1
-                                                continue
-                                            wireless_f = open(wireless_file)
-                                            if len(wireless_f.read()) == 0 :
-                                                print "file is empty"
-                                                wireless_last_match_postion = j+1
-                                                continue
-                                            print wireless_f
-                                            for k in open(wireless_file):
-                                                kk = k.strip('\n').split(',')
-                                                if len(kk) != 3:
-                                                    print "%s format error!"%(k)
-                                                    continue
-                                                print "two kind of time is :%s,%s"%(str(kk[0]),str(timestamps))
-                                                if float(kk[0]) > float(timestamps) + 5: # 10 seconds window
-                                                    print "F wired    line is %s"%(line)
-                                                    print "F wireless line is %s\n"%(k)
-                                                    wireless_last_match_postion = j
-                                                    quit = 1
-                                                    break
-                                                if float(kk[0]) < float(timestamps) - 5:
-                                                    print "B wired    line is %s"%(line)
-                                                    print "B wireless line is %s\n"%(k)
-                                                    wireless_last_match_postion = j+1
-                                                    
-                                                if seq_index == kk[2]: # successfully find
-                                                    wireless_last_match_postion = j # this may be cause some missing, because some wireless packet is early than wired part
-                                                    final_item = final_item + "," + str(kk[0])+"\n"
-                                                    print "$$$$find$$$ %s"%(final_item)
-                                            if quit == 1:
-                                                break
-
-
-
-
+                            else:#ack
+                                print "end=%d,start=%d\n"%(end,start)
+                                no = (end - start + HOLD_TIME)%HOLD_TIME
+                                index = end
+                                i = 0
+                                while (i < no):
+                                    print "index=%d,nex_seq=%s,ack=%s\n"%(index,tcp_next_seq_list[index],ack)
+                                    if tcp_next_seq_list[index] == ack:
+                                        check = tcp_data_list[index].split(',')
+                                        
+                                        seq_index = seq         # RTT + downstream
+                                        go_dir = 1
+                                        time1 = check[0]
+                                        time2 = timestamps
+                                        time3 = ''
+                                        if srcMac == monitorap: # downstream + upstream
+                                            go_dir = 2
+                                            seq_index = check[5]
+                                            time2 =''
+                                            time3 =timestamps
+                                        # last check ip address and mac address
+                                        if srcIP != check[2] or dstIP != check[1] or srcMac != check[4] or dstMac != check[3]:
+                                            i = i + 1
+                                            index = (index -1 + HOLD_TIME)%HOLD_TIME
+                                            continue
+                                        print tcp_data_list[index]
+                                        print line
+                                        #out = str(time1) + "," + str(time2) + "," \
+                                        #   + str(time3) "," + str(check[1]) + ","\
+                                        #    + str(check[2]) + "," + str(check[3]) + ","\
+                                        #   + str(check[4]) + "," + str(seq_index) + ","\
+                                        #    + str(check[8]) + "," + str(go_dir) + "\n"
+                                        #print out 
+                                        sql_insert = "insert into %s (time1,time2,time3,srcIP,dstIP,srcMac,dstMac,seq,len,direction) values('%s','%s','%s','%s','%s','%s','%s','%d','%d','%d')" \
+                                        %(table_name,time1,time2,time3,check[1],check[2],check[3],check[4],int(seq_index),int(check[8]),int(go_dir))
+                                        print sql_insert
+                                        count_insert = cur.execute(sql_insert)
+                                        
+                                        start = index
+                                        break
+                                    i = i + 1
+                                    index = (index -1 + HOLD_TIME)%HOLD_TIME
+                        conn.commit()
 
 
     except:
@@ -155,8 +138,7 @@ if __name__ == "__main__":
     conn=MySQLdb.connect(host='localhost',user='root',passwd='pch',port=3306)
     cur=conn.cursor()
     conn.select_db('wifiunion')
-    wireless_n = "ing"
-    wire_n = "d_0128_wire" 
+    wireless_n = "delay"
     print "Choose server ip is " + ip
     if len(sys.argv)!=2:
         print "input transmit data  type : 1 delay,2 inf 3 wifi "
