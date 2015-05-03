@@ -204,11 +204,11 @@ def transmit_wireless_delay(cur,conn,table_name):
                                 if count_find == 1: # cation this may be changed
                                     find_only_match_in_wire = find_only_match_in_wire + 1
                                     if int(results[0][11]) == 1: # RTT and downsteam
-                                        sql_update = "update %s set time3=%s where seq='%s'"%(table_name,items[1],items[2])
+                                        sql_update = "update %s set time3=%s,len=%d where seq='%s'"%(table_name,items[1],int(items[3]),items[2])
                                         #print sql_update
                                         count_update = cur.execute(sql_update)
                                     elif int(results[0][11]) == 2: # downstream and upstream
-                                        sql_update = "update %s set time2=%s where seq='%s'"%(table_name,items[1],items[2])
+                                        sql_update = "update %s set time2=%s,len=%d where seq='%s'"%(table_name,items[1],int(items[3]),items[2])
                                         #print sql_update
                                         count_update = cur.execute(sql_update) 
     except:
