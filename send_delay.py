@@ -193,7 +193,7 @@ def transmit_wireless_delay(cur,conn,table_name):
                             if len(items) != 5:
                                 continue
                             if int(items[2]) != 0:
-                                sql_find = "select * from %s where seq ='%s'"%(table_name,items[2])
+                                sql_find = "select * from %s where seq ='%s' and ack='%s'"%(table_name,items[2],items[3])
                                 count_find = cur.execute(sql_find)
                                 results = cur.fetchall()
                                 if count_find > 0 :
@@ -204,11 +204,11 @@ def transmit_wireless_delay(cur,conn,table_name):
                                 if count_find == 1: # cation this may be changed
                                     find_only_match_in_wire = find_only_match_in_wire + 1
                                     if int(results[0][11]) == 1: # RTT and downsteam
-                                        sql_update = "update %s set time3=%s,len=%d where seq='%s'"%(table_name,items[1],int(items[3]),items[2])
+                                        sql_update = "update %s set time3=%s,len=%d where seq='%s'"%(table_name,items[1],int(items[4]),items[2])
                                         #print sql_update
                                         count_update = cur.execute(sql_update)
                                     elif int(results[0][11]) == 2: # downstream and upstream
-                                        sql_update = "update %s set time2=%s,len=%d where seq='%s'"%(table_name,items[1],int(items[3]),items[2])
+                                        sql_update = "update %s set time2=%s,len=%d where seq='%s'"%(table_name,items[1],int(items[4]),items[2])
                                         #print sql_update
                                         count_update = cur.execute(sql_update) 
     except:
