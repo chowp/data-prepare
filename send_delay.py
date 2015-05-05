@@ -7,6 +7,7 @@ import sys
 import commands
 import socket
 import MySQLdb
+import time
 campus_ip = "166.111.9.242"
 lab_ip = "219.243.215.205"
 ip = ""
@@ -37,7 +38,7 @@ TCP_FIN_ACK = 5
 TCP_FIN     = 6
 TCP_RST     = 7
 TCP_OTHER   = 8
-debug_time = "1429806462.450838"
+debug_time = "1429843187.059451"
 #transmit packet info to server
 def transmit_delay(cur,conn,table_name):
     try:
@@ -46,21 +47,27 @@ def transmit_delay(cur,conn,table_name):
         start = 0
         end = 0
         wireless_last_match_postion = 0
-        print RAW_DATA_DIR
+        print "0->"+str(RAW_DATA_DIR)
         aps = os.listdir(RAW_DATA_DIR)
-        print aps
         for ap in aps:
-                print ap
-                branch = os.listdir(RAW_DATA_DIR+"/"+ ap)
+                dir2 = RAW_DATA_DIR+"/"+ ap
+                branch = os.listdir(dir2)
+                print dir2
                 if ap != "4494FC74F534":
                     continue
                 for data_type in branch:   		
-                    print data_type
                     if data_type != "wire_data":
                         continue
-                    dataset = os.listdir(RAW_DATA_DIR+"/"+ap+"/"+data_type)
+                    dir3 = RAW_DATA_DIR+"/"+ap+"/"+data_type
+                    print dir3
+                    dataset = os.listdir(dir3)
                     dataset.sort(key= lambda x:int(x[24:]))
+                    all_files_no = len(dataset)
+                    current_no = 0
                     for datafile in dataset: # datafile is particular file
+                        current_no = current_no + 1
+                        if current_no%100 == 0:
+                            print "process %f%%"%(float(current_no)/float(all_files_no))
                         items = datafile.split('-')
                         if len(items) !=3 :
                             continue
@@ -99,7 +106,7 @@ def transmit_delay(cur,conn,table_name):
                                 tcp_data_list[end] = line
                                 end = (end+1)%HOLD_TIME
                             else:#ack
-                                no = (end - start + HOLD_TIME)%HOLD_TIME
+                                no = HOLD_TIME-1#(end - start + HOLD_TIME)%HOLD_TIME
                                 index = end
                                 i = 0
                                 if timestamps == debug_time:
@@ -140,8 +147,8 @@ def transmit_delay(cur,conn,table_name):
                                         #   + str(check[4]) + "," + str(seq_index) + ","\
                                         #    + str(check[8]) + "," + str(go_dir) + "\n"
                                         #print out 
-                                        sql_insert = "insert ignore into %s (time1,time2,time3,srcIP,dstIP,srcMac,dstMac,seq,ack,wirelessLen,wireLen,direction) values('%s','%s','%s','%s','%s','%s','%s','%d','%d','%d','%d','%d')" \
-                                        %(table_name,time1,time2,time3,check[1],check[2],check[3],check[4],int(seq_index),int(ack_index),int(check[8]),int(hdrlen_index),int(go_dir))
+                                        sql_insert = "insert into %s (time1,time2,time3,srcIP,dstIP,srcMac,dstMac,seq,ack,wirelessLen,wireLen,direction) values('%s','%s','%s','%s','%s','%s','%s','%d','%d','%d','%d','%d') ON DUPLICATE KEY UPDATE time2='%s',time3='%s',wirelessLen=-1" \
+                                        %(table_name,time1,time2,time3,check[1],check[2],check[3],check[4],int(seq_index),int(ack_index),int(check[8]),int(hdrlen_index),int(go_dir),time2,time3)
                                         if timestamps == debug_time:
                                             print sql_insert
                                             print tcp_data_list[index]
@@ -171,12 +178,15 @@ def transmit_wireless_delay(cur,conn,table_name):
                 print ap
                 if ap != "4494FC74F534":
                     continue
-                branch = os.listdir(RAW_DATA_DIR+"/"+ ap)
+                dir2 = RAW_DATA_DIR+"/"+ ap
+                branch = os.listdir(dir2)
+                print dir2
                 for data_type in branch:        
-                    print data_type
                     if data_type != "delay_data":
                         continue
-                    dataset = os.listdir(RAW_DATA_DIR+"/"+ap+"/"+data_type)
+                    dir3 = RAW_DATA_DIR+"/"+ap+"/"+data_type
+                    dataset = os.listdir(dir3)
+                    print dir3
                     dataset.sort(key= lambda x:int(x[24:]))
                     for datafile in dataset: # datafile is particular file
                         print "match ratio is %f,%f"%(float(find_match_in_wire)/float(wireless_all),float(find_only_match_in_wire)/float(wireless_all) )
@@ -203,13 +213,16 @@ def transmit_wireless_delay(cur,conn,table_name):
                                 #    print results
                                 if count_find == 1: # cation this may be changed
                                     find_only_match_in_wire = find_only_match_in_wire + 1
+                                    if items[4] == '':
+                                        items[4] = 0
+                                        print items
                                     if int(results[0][11]) == 1: # RTT and downsteam
-                                        sql_update = "update %s set time3=%s,wirelessLen=%s where seq='%s'"%(table_name,items[1],int(items[4]),items[2])
-                                        #print sql_update
+                                        diff = int( (float(items[0])-float(results[0][1]))*1000000 )
+                                        sql_update = "update %s set time3=%s,wirelessLen=%s where seq='%s' and ack='%s' and wireLen='%s'"%(table_name,items[1],items[4],items[2],items[3],diff)
                                         count_update = cur.execute(sql_update)
                                     elif int(results[0][11]) == 2: # downstream and upstream
-                                        sql_update = "update %s set time2=%s,wirelessLen=%s where seq='%s'"%(table_name,items[1],int(items[4]),items[2])
-                                        #print sql_update
+                                        diff = int( (float(items[0])-float(results[0][0]))*1000000 )
+                                        sql_update = "update %s set time2=%s,wirelessLen=%s where seq='%s' and ack='%s' and wireLen='%s'"%(table_name,items[1],items[4],items[2],items[3],diff)
                                         count_update = cur.execute(sql_update) 
     except:
         traceback.print_exc()                                                                   
@@ -226,8 +239,9 @@ if __name__ == "__main__":
         print "input transmit data  type : 1 delay,2 inf 3 wifi "
         sys.exit(0)
     if sys.argv[1] == "1":
-        print "#####transmit delay data#####"
+        begin_excu = time.time()
         transmit_delay(cur,conn,wireless_n)
+        print "using %f seconds"%(float(time.time())-float(begin_excu))
     if sys.argv[1] == "2":
         print "##### match the wireless part #####"
         transmit_wireless_delay(cur,conn,wireless_n)
