@@ -140,7 +140,7 @@ def transmit_delay(cur,conn,table_name):
                                         #   + str(check[4]) + "," + str(seq_index) + ","\
                                         #    + str(check[8]) + "," + str(go_dir) + "\n"
                                         #print out 
-                                        sql_insert = "insert ignore into %s (time1,time2,time3,srcIP,dstIP,srcMac,dstMac,seq,ack,len,tcplen,direction) values('%s','%s','%s','%s','%s','%s','%s','%d','%d','%d','%d','%d')" \
+                                        sql_insert = "insert ignore into %s (time1,time2,time3,srcIP,dstIP,srcMac,dstMac,seq,ack,wirelessLen,wireLen,direction) values('%s','%s','%s','%s','%s','%s','%s','%d','%d','%d','%d','%d')" \
                                         %(table_name,time1,time2,time3,check[1],check[2],check[3],check[4],int(seq_index),int(ack_index),int(check[8]),int(hdrlen_index),int(go_dir))
                                         if timestamps == debug_time:
                                             print sql_insert
@@ -204,11 +204,11 @@ def transmit_wireless_delay(cur,conn,table_name):
                                 if count_find == 1: # cation this may be changed
                                     find_only_match_in_wire = find_only_match_in_wire + 1
                                     if int(results[0][11]) == 1: # RTT and downsteam
-                                        sql_update = "update %s set time3=%s,len=%d where seq='%s'"%(table_name,items[1],int(items[4]),items[2])
+                                        sql_update = "update %s set time3=%s,wirelessLen=%s where seq='%s'"%(table_name,items[1],int(items[4]),items[2])
                                         #print sql_update
                                         count_update = cur.execute(sql_update)
                                     elif int(results[0][11]) == 2: # downstream and upstream
-                                        sql_update = "update %s set time2=%s,len=%d where seq='%s'"%(table_name,items[1],int(items[4]),items[2])
+                                        sql_update = "update %s set time2=%s,wirelessLen=%s where seq='%s'"%(table_name,items[1],int(items[4]),items[2])
                                         #print sql_update
                                         count_update = cur.execute(sql_update) 
     except:
