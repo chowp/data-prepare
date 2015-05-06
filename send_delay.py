@@ -230,7 +230,7 @@ def transmit_wireless_delay(cur,conn,table_name):
                                                                                                 
 
 if __name__ == "__main__":
-    conn=MySQLdb.connect(host='localhost',user='root',passwd='pch',port=3306)
+    conn=MySQLdb.connect(host='127.0.0.1',user='root',passwd='pch',port=3306)
     cur=conn.cursor()
     conn.select_db('wifiunion')
     wireless_n = "delay"
