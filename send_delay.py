@@ -203,7 +203,7 @@ def transmit_wireless_delay(cur,conn,table_name):
                             if len(items) != 5:
                                 continue
                             if int(items[2]) != 0:
-                                sql_find = "select * from %s where seq ='%s' and ack='%s'"%(table_name,items[2],items[3])
+                                sql_find = "select * from %s where seq ='%s' and ack='%s' and wireLen='%s'"%(table_name,items[2],items[3],items[4])
                                 count_find = cur.execute(sql_find)
                                 results = cur.fetchall()
                                 if count_find > 0 :
@@ -218,11 +218,11 @@ def transmit_wireless_delay(cur,conn,table_name):
                                         print items
                                     if int(results[0][11]) == 1: # RTT and downsteam
                                         diff = int( (float(items[0])-float(results[0][1]))*1000000 )
-                                        sql_update = "update %s set time3=%s,wirelessLen=%s where seq='%s' and ack='%s' and wireLen='%s'"%(table_name,items[1],items[4],items[2],items[3],diff)
+                                        sql_update = "update %s set time3=%s,wirelessLen=%s where seq='%s' and ack='%s' and wireLen='%s'"%(table_name,items[1],diff,items[2],items[3],items[4])
                                         count_update = cur.execute(sql_update)
                                     elif int(results[0][11]) == 2: # downstream and upstream
                                         diff = int( (float(items[0])-float(results[0][0]))*1000000 )
-                                        sql_update = "update %s set time2=%s,wirelessLen=%s where seq='%s' and ack='%s' and wireLen='%s'"%(table_name,items[1],items[4],items[2],items[3],diff)
+                                        sql_update = "update %s set time2=%s,wirelessLen=%s where seq='%s' and ack='%s' and wireLen='%s'"%(table_name,items[1],diff,items[2],items[3],items[4])
                                         count_update = cur.execute(sql_update) 
     except:
         traceback.print_exc()                                                                   
